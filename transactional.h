@@ -80,15 +80,17 @@ class Database
 	template<typename... types>
 	std::vector<std::tuple<types...>> SELECT (const std::string& query)
 	{
+		using Tuple = std::tuple<types...>;
+
 		sqlite3_stmt* stmt = nullptr;
 		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, query.c_str(), query.length(), &stmt, nullptr);}, SQLITE_OK);
 
-		std::vector<std::tuple<types...>> acc;
-		const int size = std::tuple_size<std::tuple<types...>>::value;
+		std::vector<Tuple> acc;
+		const int size = std::tuple_size<Tuple>::value;
 
 		while(sqlite3_step(stmt) == SQLITE_ROW)
 		{
-			std::tuple<types...> out; 
+			Tuple out; 
 
 			int i = 0;
 			std::apply([&](auto&&... args) {((getColumn(args, i++, stmt)), ...);}, out);
