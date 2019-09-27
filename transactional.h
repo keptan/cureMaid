@@ -83,7 +83,7 @@ class Database
 		using Tuple = std::tuple<types...>;
 
 		sqlite3_stmt* stmt = nullptr;
-		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, query.c_str(), query.length(), &stmt, nullptr);}, SQLITE_OK);
+		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, "SELECT " + query.c_str(), query.length(), &stmt, nullptr);}, SQLITE_OK);
 
 		std::vector<Tuple> acc;
 		const int size = std::tuple_size<Tuple>::value;
