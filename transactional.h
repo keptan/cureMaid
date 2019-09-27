@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
+#include <assert.h>
 
 
 class sqliteError : public std::exception
@@ -87,6 +88,7 @@ class Database
 
 		std::vector<Tuple> acc;
 		const int size = std::tuple_size<Tuple>::value;
+		assert(sqlite3_column_count(stmt) == size);
 
 		while(sqlite3_step(stmt) == SQLITE_ROW)
 		{
@@ -105,18 +107,19 @@ class Database
 
 	void getColumn (int& i, int cidx , sqlite3_stmt* s)
 	{
+		assert(sqlite3_column_type(s, cidx) == SQLITE_INTEGER);
 		i = sqlite3_column_int(s, cidx);
 	}
 
 	void getColumn (double& d, int cidx, sqlite3_stmt* s)
 	{
+		assert(sqlite3_column_type(s, cidx) == SQLITE_FLOAT);
 		d = sqlite3_column_double(s, cidx);
 	}
 
 	void getColumn (std::string& str, int cidx, sqlite3_stmt* s)
 	{
+		assert(sqlite3_column_type(s, cidx) == SQLITE_TEXT);
 		str = (const char*) sqlite3_column_text(s, cidx);
 	}
-
-
 };
