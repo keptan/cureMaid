@@ -1,5 +1,6 @@
 # cureMaid
 server client program for managing a transactional anime girl database 
+![](https://u.teknik.io/vmas5.jpg)
 
 currenly working through SQL bindings
 can do selects into structured bindings : ) 
