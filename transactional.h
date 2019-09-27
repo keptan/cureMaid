@@ -79,12 +79,14 @@ class Database
 
 
 	template<typename... types>
-	std::vector<std::tuple<types...>> SELECT (const std::string& query)
+	std::vector<std::tuple<types...>> SELECT (const std::string& query) const
 	{
 		using Tuple = std::tuple<types...>;
+		const std::string sQuery = "SELECT " + query; 
+		std::cout << sQuery << std::endl;
 		
 		sqlite3_stmt* stmt = nullptr;
-		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, query.c_str(), query.length(), &stmt, nullptr);}, SQLITE_OK);
+		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
 
 		std::vector<Tuple> acc;
 		const int size = std::tuple_size<Tuple>::value;
@@ -105,19 +107,19 @@ class Database
 
 	private:
 
-	void getColumn (int& i, int cidx , sqlite3_stmt* s)
+	void getColumn (int& i, int cidx , sqlite3_stmt* s) const
 	{
 		assert(sqlite3_column_type(s, cidx) == SQLITE_INTEGER);
 		i = sqlite3_column_int(s, cidx);
 	}
 
-	void getColumn (double& d, int cidx, sqlite3_stmt* s)
+	void getColumn (double& d, int cidx, sqlite3_stmt* s) const
 	{
 		assert(sqlite3_column_type(s, cidx) == SQLITE_FLOAT);
 		d = sqlite3_column_double(s, cidx);
 	}
 
-	void getColumn (std::string& str, int cidx, sqlite3_stmt* s)
+	void getColumn (std::string& str, int cidx, sqlite3_stmt* s) const
 	{
 		assert(sqlite3_column_type(s, cidx) == SQLITE_TEXT);
 		str = (const char*) sqlite3_column_text(s, cidx);
