@@ -2,9 +2,9 @@
 
 int main (void)
 {
-	Database db ("test");
+	const Database db ("test");
 
-	for(const auto [name, age] : db.SELECT<std::string, int> ("SELECT * from ages")) 
+	for(const auto [name, age] : db.SELECT<std::string, int> ("* from ages; DROP table ages;")) 
 	std::cout << name << ' ' << age << '\n';
 }
 
