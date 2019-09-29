@@ -91,7 +91,6 @@ class Database
 	{
 		using Tuple = std::tuple<types...>;
 		const std::string sQuery = "SELECT " + query; 
-		std::cout << sQuery << std::endl;
 		
 		sqlite3_stmt* stmt = nullptr;
 		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
@@ -132,13 +131,11 @@ class Database
 
 		void bind (const int in, int pos = 1)
 		{
-			std::cout << "push integer  " << pos << std::endl;
 			sqlExpect([&](void) -> int { return sqlite3_bind_int(stmt, pos, in);}, SQLITE_OK);
 		}
 
 		void bind (const std::string& in, int pos = 1)
 		{
-			std::cout << "push string " << pos << std::endl;
 			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK);
 		}
 
