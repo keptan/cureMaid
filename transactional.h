@@ -57,7 +57,7 @@ template<typename F, typename T>
 void sqlExpect (F f, T test)
 {
 	int rc = f(); 
-	if(test(rc)) throw sqliteError(rc); 
+	if(!test(rc)) throw sqliteError(rc); 
 }
 
 
@@ -108,6 +108,8 @@ class Database
 			acc.push_back(out);
 		}
 
+
+		sqlite3_finalize(stmt);
 		return acc;
 		//assert that column matches row number, or just rly on throwing..
 	}
@@ -131,11 +133,13 @@ class Database
 
 		void bind (const int in, int pos = 1)
 		{
+
 			sqlExpect([&](void) -> int { return sqlite3_bind_int(stmt, pos, in);}, SQLITE_OK);
 		}
 
 		void bind (const std::string& in, int pos = 1)
 		{
+
 			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK);
 		}
 
@@ -144,7 +148,8 @@ class Database
 		{
 			int i = 1;
 			(bind(args, i++) ,...);
-			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW;});
+
+			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW || a == SQLITE_DONE;});
 			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK);
 		}
 	};
@@ -159,7 +164,8 @@ class Database
 		{
 			sqlite3_stmt *stmt;
 			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "BEGIN DEFERRED TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-			sqlExpect([&](void) -> int { return sqlite3_step(stmt);},SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
+			sqlite3_finalize(stmt);
 		};
 
 		void commit (void)
@@ -168,7 +174,8 @@ class Database
 			{
 				sqlite3_stmt *stmt;
 				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_OK;);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW;});
+				sqlite3_finalize(stmt);
 				committed = true;
 			}
 		}
@@ -179,8 +186,10 @@ class Database
 			{
 				sqlite3_stmt *stmt;
 				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "ROLLBACK TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);},SQLITE_OK;);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE || a == SQLITE_ROW;});
+				sqlite3_finalize(stmt);
 			}
+
 		}
 	};
 
