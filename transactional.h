@@ -53,6 +53,13 @@ void sqlExpect (F f, const int out)
 	if(rc != out) throw sqliteError(rc); 
 }
 
+template<typename F, typename T>
+void sqlExpect (F f, T test)
+{
+	int rc = f(); 
+	if(test(rc)) throw sqliteError(rc); 
+}
+
 
 class Database 
 {
@@ -72,6 +79,8 @@ class Database
 	
 	~Database (void) //default behavior? use exit policy and also constrain with concepts! 
 	{
+		std::cout << "test" << std::endl;
+		sqlite3_errmsg(db);
 		sqlite3_close(db);
 		sqlite3_shutdown();
 	}
@@ -104,6 +113,51 @@ class Database
 		return acc;
 		//assert that column matches row number, or just rly on throwing..
 	}
+
+	class InsertTransaction
+	{
+		sqlite3_stmt *stmt;
+
+		public:
+
+		InsertTransaction (const Database& db, const std::string& query)
+		{
+			const std::string sQuery = "INSERT " + query; 
+			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
+		}
+
+		~InsertTransaction (void)
+		{
+			sqlite3_finalize(stmt);
+		}
+
+		void bind (const int in, int pos = 1)
+		{
+			std::cout << "push integer  " << pos << std::endl;
+			sqlExpect([&](void) -> int { return sqlite3_bind_int(stmt, pos, in);}, SQLITE_OK);
+		}
+
+		void bind (const std::string& in, int pos = 1)
+		{
+			std::cout << "push string " << pos << std::endl;
+			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK);
+		}
+
+		template<typename... types>
+		void push (types... args)
+		{
+			int i = 1;
+			(bind(args, i++) ,...);
+			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW;});
+		}
+
+	};
+
+	InsertTransaction INSERT (const std::string& query)
+	{
+		return InsertTransaction (*this, query);
+	}
+
 
 	private:
 
