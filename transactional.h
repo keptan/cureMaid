@@ -57,7 +57,6 @@ template<typename F, typename T>
 void sqlExpect (F f, T test)
 {
 	int rc = f(); 
-	std::cout << rc << std::endl;
 	if(!test(rc)) throw sqliteError(rc); 
 }
 
@@ -150,10 +149,8 @@ class Database
 			int i = 1;
 			(bind(args, i++) ,...);
 
-			std::cout << "bind end" << std::endl;
 			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW || a == SQLITE_DONE;});
 			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK);
-			std::cout << "BIND END" << std::endl;
 		}
 	};
 
