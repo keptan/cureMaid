@@ -143,6 +143,14 @@ class Database
 			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK);
 		}
 
+		void bind (const double in, int pos = 1)
+		{
+
+			sqlExpect([&](void) -> int { return sqlite3_bind_double(stmt, pos, in);}, SQLITE_OK);
+		}
+
+
+
 		template<typename... types>
 		void push (types... args)
 		{
@@ -209,13 +217,13 @@ class Database
 
 	void getColumn (int& i, int cidx , sqlite3_stmt* s) const
 	{
-		assert(sqlite3_column_type(s, cidx) == SQLITE_INTEGER);
+		assert(sqlite3_column_type(s, cidx) == SQLITE_FLOAT || sqlite3_column_type(s, cidx) == SQLITE_INTEGER);
 		i = sqlite3_column_int(s, cidx);
 	}
 
 	void getColumn (double& d, int cidx, sqlite3_stmt* s) const
 	{
-		assert(sqlite3_column_type(s, cidx) == SQLITE_FLOAT);
+		assert(sqlite3_column_type(s, cidx) == SQLITE_FLOAT || sqlite3_column_type(s, cidx) == SQLITE_INTEGER);
 		d = sqlite3_column_double(s, cidx);
 	}
 
