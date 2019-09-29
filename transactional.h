@@ -79,7 +79,6 @@ class Database
 	
 	~Database (void) //default behavior? use exit policy and also constrain with concepts! 
 	{
-		std::cout << "test" << std::endl;
 		sqlite3_errmsg(db);
 		sqlite3_close(db);
 		sqlite3_shutdown();
@@ -150,8 +149,47 @@ class Database
 			(bind(args, i++) ,...);
 			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW;});
 		}
-
 	};
+
+	class Transaction
+	{
+		const Database& db;
+		bool committed; 
+		public:
+		Transaction (const Database& db)
+			:db(db),  committed(false)
+		{
+			sqlite3_stmt *stmt;
+			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "BEGIN DEFERRED TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK;});
+		};
+
+		void commit (void)
+		{
+			if(!committed)
+			{
+				sqlite3_stmt *stmt;
+				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK;});
+				committed = true;
+			}
+		}
+
+		~Transaction (void)
+		{
+			if(!committed)
+			{
+				sqlite3_stmt *stmt;
+				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "ROLLBACK TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK;});
+			}
+		}
+	};
+
+	Transaction transaction (void)
+	{
+		return Transaction(*this);
+	}
 
 	InsertTransaction INSERT (const std::string& query)
 	{
