@@ -57,6 +57,7 @@ template<typename F, typename T>
 void sqlExpect (F f, T test)
 {
 	int rc = f(); 
+	std::cout << rc << std::endl;
 	if(!test(rc)) throw sqliteError(rc); 
 }
 
@@ -149,8 +150,10 @@ class Database
 			int i = 1;
 			(bind(args, i++) ,...);
 
+			std::cout << "bind end" << std::endl;
 			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW || a == SQLITE_DONE;});
 			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK);
+			std::cout << "BIND END" << std::endl;
 		}
 	};
 
@@ -173,8 +176,9 @@ class Database
 			if(!committed)
 			{
 				sqlite3_stmt *stmt;
+
 				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW;});
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
 				sqlite3_finalize(stmt);
 				committed = true;
 			}
