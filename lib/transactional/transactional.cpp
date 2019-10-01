@@ -11,7 +11,6 @@ int test (void)
 	stmt.push("promotion", 10.5);
 	//will be rolledback automatically on scope close
 	//
-	db.INSERT("* from ages; DROP table ages;");
 }
 
 
