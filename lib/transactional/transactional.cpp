@@ -8,7 +8,13 @@ int test (void)
 
 	auto transaction = db.transaction();
 	auto stmt = db.INSERT("INTO ages (name, age) VALUES (?, ?)");
-	stmt.push("promotion", 10.5);
+
+	if(db.SELECT<std::string, double>("* from ages where name = 'promotion'").size() == 0)
+	{
+		std::cout << "inserting PROMOTION" << std::endl;
+		stmt.push("promotion", 10.5);
+		transaction.commit();
+	}
 	//will be rolledback automatically on scope close
 	//
 }
