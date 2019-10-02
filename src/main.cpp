@@ -1,5 +1,15 @@
 #include "transactional.h"
 
+void continueTransaction (Database::Transaction&& t, Database& db)
+{
+
+	//tags to image bridge 
+	db.CREATE("TABLE IF NOT EXISTS image_tag_bridge (hash STRING NOT_NULL REFERENCES images,"
+													"tag STRING NOT_NULL REFERENCES tags)");
+	//only commit if we can make all the tables..
+	t.commit();
+}
+
 void buildDatabases (Database& db)
 {
 	auto t = db.transaction();
@@ -13,14 +23,9 @@ void buildDatabases (Database& db)
 	//table that holds all the tags
 	db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT_NULL PRIMARY KEY)");
 
-	//tags to image bridge 
-	db.CREATE("TABLE IF NOT EXISTS image_tag_bridge (hash STRING NOT_NULL REFERENCES images,"
-													"tag STRING NOT_NULL REFERENCES tags)");
-
-
-	//only commit if we can make all the tables..
-	t.commit();
+	continueTransaction(std::move(t), db);
 }
+
 
 
 
