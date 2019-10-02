@@ -211,6 +211,17 @@ class Database
 		return InsertTransaction (*this, query);
 	}
 
+	void CREATE (const std::string& q)
+	{
+		sqlite3_stmt* stmt; 
+
+		std::string Qs = "CREATE " + q;
+		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, Qs.c_str(), Qs.length(), &stmt, nullptr);}, SQLITE_OK);
+		sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_DONE);
+		sqlite3_finalize(stmt); 
+	}
+		
+
 
 	private:
 
