@@ -216,6 +216,11 @@ class Database
 		return BindingTransaction(*this, "UPDATE", query);
 	}
 
+	BindingTransaction DELETE (const std::string& query)
+	{
+		return BindingTransaction(*this, "DELETE", query);
+	}
+
 	void CREATE (const std::string& q)
 	{
 		sqlite3_stmt* stmt; 
