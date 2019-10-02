@@ -130,6 +130,7 @@ class Database
 			sqlite3_finalize(stmt);
 		}
 
+		private:
 		void bind (const int in, int pos = 1)
 		{
 
@@ -147,7 +148,7 @@ class Database
 
 			sqlExpect([&](void) -> int { return sqlite3_bind_double(stmt, pos, in);}, SQLITE_OK);
 		}
-
+		public:
 
 
 		template<typename... types>
