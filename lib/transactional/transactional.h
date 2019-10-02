@@ -9,9 +9,8 @@
 
 class sqliteError : public std::exception
 {
-	const int code;
-
 	public:
+	const int code;
 	explicit sqliteError (const int c)
 		:code(c)
 	{}
@@ -157,7 +156,7 @@ class Database
 			int i = 1;
 			(bind(args, i++) ,...);
 
-			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_ROW || a == SQLITE_DONE;});
+			int rc = sqlite3_step(stmt);
 			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK);
 		}
 	};
