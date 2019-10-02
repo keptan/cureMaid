@@ -113,19 +113,19 @@ class Database
 		//assert that column matches row number, or just rly on throwing..
 	}
 
-	class InsertTransaction
+	class BindingTransaction
 	{
 		sqlite3_stmt *stmt;
 
 		public:
 
-		InsertTransaction (const Database& db, const std::string& query)
+		BindingTransaction (const Database& db, const std::string& sql, const std::string& query)
 		{
-			const std::string sQuery = "INSERT " + query; 
+			const std::string sQuery = sql + " "  + query; 
 			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
 		}
 
-		~InsertTransaction (void)
+		~BindingTransaction (void)
 		{
 			sqlite3_finalize(stmt);
 		}
@@ -177,15 +177,7 @@ class Database
 
 		void commit (void)
 		{
-			if(!committed)
-			{
-				sqlite3_stmt *stmt;
-
-				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
-				sqlite3_finalize(stmt);
-				committed = true;
-			}
+			committed = true;
 		}
 
 		~Transaction (void)
@@ -197,7 +189,15 @@ class Database
 				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE || a == SQLITE_ROW;});
 				sqlite3_finalize(stmt);
 			}
+			else 
+			{
+				sqlite3_stmt *stmt;
 
+				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
+				sqlite3_finalize(stmt);
+				committed = true;
+			}
 		}
 	};
 
@@ -206,9 +206,14 @@ class Database
 		return Transaction(*this);
 	}
 
-	InsertTransaction INSERT (const std::string& query)
+	BindingTransaction INSERT (const std::string& query)
 	{
-		return InsertTransaction (*this, query);
+		return BindingTransaction (*this, "INSERT", query);
+	}
+
+	BindingTransaction UPDATE (const std::string& query)
+	{
+		return BindingTransaction(*this, "UPDATE", query);
 	}
 
 	void CREATE (const std::string& q)
