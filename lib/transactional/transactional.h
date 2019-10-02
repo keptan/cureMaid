@@ -176,6 +176,10 @@ class Database
 			sqlite3_finalize(stmt);
 		};
 
+		Transaction (Transaction&&) = default;
+		Transaction (const Transaction&)  = delete;
+		Transaction& operator = (const Transaction&) = delete;
+
 		void commit (void)
 		{
 			committed = true;
