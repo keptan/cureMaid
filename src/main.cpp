@@ -64,6 +64,10 @@ int main (void)
 	//batch into a transaction which is much much faster!
 	auto t = db.transaction();
 
+	//these are the bindable transactions we will use
+	//could use INSERT OR IGNORE to silently ignore constraint violations 
+	//for example dupliates
+	//here we are using exception handling to do that.
 	auto ii	  = db.INSERT("INTO images (hash) VALUES (?)");
 	auto si	  = db.INSERT("INTO idScore (hash, mu, sigma) VALUES (?, ?, ?)");
 
