@@ -55,6 +55,52 @@ readScoreCSV (const std::string& file )
 	return acc;
 }
 
+std::vector< std::tuple<std::string, std::vector<std::string>>>
+readTagsCSV (const std::string& file)
+{
+	std::vector< std::tuple< std::string, std::vector<std::string>>> out;
+	std::fstream fs(file);
+	fs.seekg(0, std::ios::beg);
+
+	std::string line;
+
+	while ( std::getline(fs, line))
+	{
+		std::string head;
+		std::string acc;
+		//replace with tagset? 
+		std::vector<std::string> tags;
+
+		auto i = line.begin();
+
+		if(line.size() < 3) continue; 
+		for(; *i != ','; i++)
+		{
+			head += *i;
+		}
+		i++;
+
+		bool inQuote = false;
+
+		for(; i != line.end(); i++)
+		{
+			if(*i == ',')
+			{
+				tags.push_back( acc);
+				acc = "";
+				continue; 
+			}
+
+			acc.push_back(*i);
+		}
+		tags.push_back(acc);
+		out.push_back( std::make_tuple(head, tags));
+	}
+
+	return out;
+}
+
+
 int main (void)
 {
 	//in memory database so its new everytime
@@ -88,6 +134,19 @@ int main (void)
 			{
 				throw (e);
 			}
+		}
+	}
+
+	auto ti	    = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
+	auto bridge = db.INSERT("OR IGNORE INTO image_tag_bridge (hash, tag) VALUES (?, ?)");
+
+	//need to catch meta-tags like 'no_gelbooru' 
+	for(const auto [image, tags] : readTagsCSV("../booru.csv"))
+	{
+		for(const auto t : tags)
+		{
+			ti.push(t);
+			bridge.push(image, t);
 		}
 	}
 
