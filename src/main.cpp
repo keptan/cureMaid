@@ -21,6 +21,10 @@ void buildDatabases (Database& db)
 	//table that holds all the tags
 	db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT_NULL PRIMARY KEY UNIQUE)");
 
+	//tag scores
+	db.CREATE("TABLE IF NOT EXISTS tagScore (tag STRING NOT_NULL PRIMARY_KEY UNIQUE REFERENCES tags,"
+											"mu REAL NOT_NULL, sigma REAL NOT_NULL)");
+
 	//tags to image bridge 
 	db.CREATE("TABLE IF NOT EXISTS image_tag_bridge (hash STRING NOT_NULL REFERENCES images,"
 													"tag STRING NOT_NULL REFERENCES tags,"
@@ -119,15 +123,16 @@ int main (void)
 	//could use INSERT OR IGNORE to silently ignore constraint violations 
 	//for example dupliates
 	//here we are using exception handling to do that.
-	auto ii	  = db.INSERT("INTO images (hash) VALUES (?)");
-	auto si	  = db.INSERT("INTO idScore (hash, mu, sigma) VALUES (?, ?, ?)");
+	auto ii	  = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
+	auto si	  = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
 
-	for(const auto [hash, mu, sigma] : readScoreCSV("../idScores.csv")) 
+	for(const auto [tag, mu, sigma] : readScoreCSV("../booruScores.csv")) 
+
 	{
 		try
 		{
-		ii.push(hash);
-		si.push(hash, mu, sigma);
+		ii.push(tag);
+		si.push(tag, mu, sigma);
 		}
 		catch(const sqliteError& e)
 		{
