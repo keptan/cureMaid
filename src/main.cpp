@@ -25,8 +25,13 @@ void buildDatabases (Database& db)
 	db.CREATE("TABLE IF NOT EXISTS image_tag_bridge (hash STRING NOT_NULL REFERENCES images,"
 													"tag STRING NOT_NULL REFERENCES tags,"
 													"PRIMARY KEY (hash, tag))");
+
 	//artist identity 
-	db.CREATE("TABLE IF NOT EXISTS artists (artist STRING NOT_NULL PRIMARY KEY)");
+	db.CREATE("TABLE IF NOT EXISTS artists (artist STRING NOT_NULL PRIMARY KEY UNIQUE)");
+
+	db.CREATE("TABLE IF NOT EXISTS image_artist_bridge (hash STRING NOT_NULL REFERENCES images,"
+													"artist STRING NOT_NULL REFERENCES artists,"
+													"PRIMARY KEY (hash, artist))");
 
 	//only commit if we can make all the tables..
 	t.commit();
