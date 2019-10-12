@@ -11,13 +11,26 @@ class sqliteError : public std::exception
 {
 	public:
 	const int code;
+	std::string msg; 
+
 	explicit sqliteError (const int c)
 		:code(c)
-	{}
+	{
+		msg = sqlite3_errstr(code); 
+		msg += " " + std::to_string(code);
+	}
+
+	explicit sqliteError (const int c, const std::string& extra)
+		:code(c)
+	{
+		msg = sqlite3_errstr(code); 
+		msg += " " + std::to_string(code);
+		msg += " " + extra; 
+	}
 
 	virtual const char* what (void) const throw()
 	{
-		return sqlite3_errstr(code);
+		return msg.c_str();
 	}
 };
 
