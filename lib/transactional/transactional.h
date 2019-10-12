@@ -74,10 +74,12 @@ void sqlExpect (F f, T test)
 
 class Database 
 {
+
+	public:
 	const std::string file;
 	sqlite3* db;
 
-	public:
+
 
 	Database  (const std::string& f)
 		:file(f)
@@ -238,12 +240,6 @@ class Database
 		return BindingTransaction(*this, "DELETE", query);
 	}
 
-	BindingTransaction CREATE (const std::string& query)
-	{
-		return BindingTransaction(*this, "CREATE", query);
-	}
-
-	/*
 	void CREATE (const std::string& q)
 	{
 		sqlite3_stmt* stmt; 
@@ -253,7 +249,6 @@ class Database
 		sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_DONE);
 		sqlite3_finalize(stmt); 
 	}
-	*/
 
 	private:
 
