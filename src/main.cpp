@@ -11,6 +11,7 @@ void buildDatabases (Database& db)
 	//start a transaction that we can rollback if anything throws
 	auto t = db.transaction();
 
+	//we aren't allowed to paramaterize this btw 
 	//image identity database, holds hashes of all the images....
 	db.CREATE("TABLE IF NOT EXISTS images (hash STRING NOT_NULL PRIMARY_KEY UNIQUE)");
 
@@ -19,20 +20,18 @@ void buildDatabases (Database& db)
 											"mu REAL NOT_NULL, sigma REAL NOT_NULL)");
 	//tag identity
 	//table that holds all the tags
-	db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT_NULL PRIMARY KEY UNIQUE)");
-
 	//tag scores
+	db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT_NULL PRIMARY KEY UNIQUE)");
 	db.CREATE("TABLE IF NOT EXISTS tagScore (tag STRING NOT_NULL PRIMARY_KEY UNIQUE REFERENCES tags,"
 											"mu REAL NOT_NULL, sigma REAL NOT_NULL)");
-
-	//tags to image bridge 
 	db.CREATE("TABLE IF NOT EXISTS image_tag_bridge (hash STRING NOT_NULL REFERENCES images,"
 													"tag STRING NOT_NULL REFERENCES tags,"
 													"PRIMARY KEY (hash, tag))");
 
 	//artist identity 
 	db.CREATE("TABLE IF NOT EXISTS artists (artist STRING NOT_NULL PRIMARY KEY UNIQUE)");
-
+	db.CREATE("TABLE IF NOT EXISTS artistScore (artist STRING NOT_NULL PRIMARY_KEY UNIQUE REFERENCES artists,"
+											"mu REAL NOT_NULL, sigma REAL NOT_NULL)");
 	db.CREATE("TABLE IF NOT EXISTS image_artist_bridge (hash STRING NOT_NULL REFERENCES images,"
 													"artist STRING NOT_NULL REFERENCES artists,"
 													"PRIMARY KEY (hash, artist))");
@@ -109,24 +108,12 @@ readTagsCSV (const std::string& file)
 	return out;
 }
 
-
-int main (void)
+void insertTagScores (Database& db, const std::string& file)
 {
-	//in memory database so its new everytime
-	Database db ("../test");
-	buildDatabases(db);
-
-	//batch into a transaction which is much much faster!
-	auto t = db.transaction();
-
-	//these are the bindable transactions we will use
-	//could use INSERT OR IGNORE to silently ignore constraint violations 
-	//for example dupliates
-	//here we are using exception handling to do that.
 	auto ii	  = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
 	auto si	  = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
 
-	for(const auto [tag, mu, sigma] : readScoreCSV("../booruScores.csv")) 
+	for(const auto [tag, mu, sigma] : readScoreCSV(file)) 
 
 	{
 		try
@@ -146,12 +133,16 @@ int main (void)
 			}
 		}
 	}
+}
+
+void insertTags (Database& db, const std::string& file)
+{
 
 	auto ti	    = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
 	auto bridge = db.INSERT("OR IGNORE INTO image_tag_bridge (hash, tag) VALUES (?, ?)");
 
 	//need to catch meta-tags like 'no_gelbooru' 
-	for(const auto [image, tags] : readTagsCSV("../booru.csv"))
+	for(const auto [image, tags] : readTagsCSV(file))
 	{
 		for(const auto t : tags)
 		{
@@ -159,8 +150,66 @@ int main (void)
 			bridge.push(image, t);
 		}
 	}
+}
 
-	//commit if nothing throws..
+void insertArtists (Database& db, const std::string& file)
+{
+
+	auto ti	    = db.INSERT("OR IGNORE INTO artists (artist) VALUES (?)");
+	auto bridge = db.INSERT("OR IGNORE INTO image_artist_bridge (hash, artist) VALUES (?, ?)");
+
+	//need to catch meta-tags like 'no_gelbooru' 
+	for(const auto [image, tags] : readTagsCSV(file))
+	{
+		for(const auto t : tags)
+		{
+			ti.push(t);
+			bridge.push(image, t);
+		}
+	}
+}
+
+void insertArtistScores (Database& db, const std::string& file)
+{
+	auto ii	  = db.INSERT("OR IGNORE INTO artists (artist) VALUES (?)");
+	auto si	  = db.INSERT("OR IGNORE INTO artistScore (artist, mu, sigma) VALUES (?, ?, ?)");
+
+	for(const auto [tag, mu, sigma] : readScoreCSV(file)) 
+
+	{
+		try
+		{
+		std::cout << tag << ' ' << mu << std::endl;
+		ii.push(tag);
+		si.push(tag, mu, sigma);
+		}
+		catch(const sqliteError& e)
+		{
+			if(e.code == SQLITE_CONSTRAINT)
+			{
+				continue;
+			}
+			else 
+			{
+				throw (e);
+			}
+		}
+	}
+}
+
+int main (void)
+{
+	//in memory database so its new everytime
+	Database db ("test");
+	buildDatabases(db);
+
+	//batch into a transaction which is much much faster!
+	auto t = db.transaction();
+	insertTags(db, "../booru.csv");
+	insertTagScores(db, "../booruScores.csv");
+	insertArtists(db, "../artists.csv");
+	insertArtistScores(db, "../artistScores.csv");
+
 	t.commit();;
 
 }
