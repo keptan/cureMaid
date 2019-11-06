@@ -266,6 +266,21 @@ class Database
 
 	void getColumn (std::string& str, int cidx, sqlite3_stmt* s) const
 	{
+		//idk if should even do this
+		//sqlite niavely dumps values into float and int category 
+		//so should we catch those and stringify them like this?
+		if(sqlite3_column_type(s, cidx) == 2)
+		{
+			str = std::to_string(sqlite3_column_double(s, cidx));
+			return; 
+		}
+
+		if(sqlite3_column_type(s, cidx) == 1)
+		{
+			str = std::to_string(sqlite3_column_int(s, cidx));
+			return; 
+		}
+
 		assert(sqlite3_column_type(s, cidx) == SQLITE_TEXT);
 		str = (const char*) sqlite3_column_text(s, cidx);
 	}
