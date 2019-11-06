@@ -179,7 +179,6 @@ void insertArtistScores (Database& db, const std::string& file)
 	{
 		try
 		{
-		std::cout << tag << ' ' << mu << std::endl;
 		ii.push(tag);
 		si.push(tag, mu, sigma);
 		}
@@ -194,6 +193,18 @@ void insertArtistScores (Database& db, const std::string& file)
 				throw (e);
 			}
 		}
+	}
+}
+
+void cutestArtists (Database& db)
+{
+	const auto search = db.SELECT<std::string, double>("artist, (mu - sigma * 3) * min(10, COUNT(*)) as power" 
+														" FROM artistScore JOIN image_artist_bridge USING (artist)" 
+														" GROUP BY artist ORDER BY power");
+
+	for(const auto& [artist, power] : search)
+	{
+		std::cout << artist << ' ' << power << std::endl;
 	}
 }
 
@@ -212,4 +223,5 @@ int main (void)
 
 	t.commit();;
 
+	cutestArtists(db);
 }
