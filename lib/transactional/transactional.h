@@ -59,17 +59,27 @@ class Cleaner
 };
 
 template<typename F>
-void sqlExpect (F f, const int out)
+void sqlExpect (F f, const int out, sqlite3* db = nullptr)
 {
 	int rc = f(); 
-	if(rc != out) throw sqliteError(rc); 
+	if(rc != out) 
+	{
+		if(db) 	throw sqliteError(rc, sqlite3_errmsg(db));
+			
+		throw sqliteError(rc); 
+	}
 }
 
 template<typename F, typename T>
-void sqlExpect (F f, T test)
+void sqlExpect (F f, T test, sqlite3* db = nullptr)
 {
 	int rc = f(); 
-	if(!test(rc)) throw sqliteError(rc); 
+	if(!test(rc)) 
+	{
+		if(db) throw sqliteError(rc, sqlite3_errmsg(db));
+
+		throw sqliteError(rc);
+	}
 }
 
 
@@ -87,7 +97,7 @@ class Database
 	{
 		sqlite3_initialize();
 		Cleaner c([&](){std::cout << sqlite3_errmsg(db); sqlite3_close(db);});
-		sqlExpect([&](void) -> int { return sqlite3_open_v2(file.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr);}, SQLITE_OK);
+		sqlExpect([&](void) -> int { return sqlite3_open_v2(file.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr);}, SQLITE_OK, db);
 		c.done();
 	}
 	
@@ -107,7 +117,7 @@ class Database
 		const std::string sQuery = "SELECT " + query; 
 		
 		sqlite3_stmt* stmt = nullptr;
-		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
+		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK, db);
 
 		std::vector<Tuple> acc;
 		const int size = std::tuple_size<Tuple>::value;
@@ -130,14 +140,16 @@ class Database
 
 	class BindingTransaction
 	{
+		const Database& db;
 		sqlite3_stmt *stmt;
 
 		public:
 
 		BindingTransaction (const Database& db, const std::string& sql, const std::string& query)
+			: db(db)
 		{
 			const std::string sQuery = sql + " "  + query; 
-			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK, db.db);
 		}
 
 		~BindingTransaction (void)
@@ -149,19 +161,19 @@ class Database
 		void bind (const int in, int pos = 1)
 		{
 
-			sqlExpect([&](void) -> int { return sqlite3_bind_int(stmt, pos, in);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_bind_int(stmt, pos, in);}, SQLITE_OK, db.db);
 		}
 
 		void bind (const std::string& in, int pos = 1)
 		{
 
-			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, pos, in.c_str(), in.length(), nullptr);}, SQLITE_OK, db.db);
 		}
 
 		void bind (const double in, int pos = 1)
 		{
 
-			sqlExpect([&](void) -> int { return sqlite3_bind_double(stmt, pos, in);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_bind_double(stmt, pos, in);}, SQLITE_OK, db.db);
 		}
 		public:
 
@@ -173,7 +185,7 @@ class Database
 			(bind(args, i++) ,...);
 
 			int rc = sqlite3_step(stmt);
-			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK);
+			sqlExpect([&](void) -> int { return sqlite3_reset(stmt);}, SQLITE_OK, db.db);
 		}
 	};
 
@@ -186,8 +198,8 @@ class Database
 			:db(db),  committed(false)
 		{
 			sqlite3_stmt *stmt;
-			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "BEGIN DEFERRED TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
+			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "BEGIN DEFERRED TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;}, db.db);
 			sqlite3_finalize(stmt);
 		};
 
@@ -205,16 +217,16 @@ class Database
 			if(!committed)
 			{
 				sqlite3_stmt *stmt;
-				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "ROLLBACK TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE || a == SQLITE_ROW;});
+				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "ROLLBACK TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE || a == SQLITE_ROW;}, db.db);
 				sqlite3_finalize(stmt);
 			}
 			else 
 			{
 				sqlite3_stmt *stmt;
 
-				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK);
-				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;});
+				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;}, db.db);
 				sqlite3_finalize(stmt);
 				committed = true;
 			}
@@ -246,8 +258,8 @@ class Database
 		sqlite3_stmt* stmt; 
 
 		std::string Qs = "CREATE " + q;
-		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, Qs.c_str(), Qs.length(), &stmt, nullptr);}, SQLITE_OK);
-		sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_DONE);
+		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, Qs.c_str(), Qs.length(), &stmt, nullptr);}, SQLITE_OK, db);
+		sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_DONE, db);
 		sqlite3_finalize(stmt); 
 	}
 
