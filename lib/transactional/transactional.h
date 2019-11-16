@@ -119,6 +119,9 @@ class Database
 		sqlite3_stmt* stmt = nullptr;
 		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK, db);
 
+		//runs on scope close, and finalizes stmt
+		Cleaner c([&](){sqlite3_finalize(stmt);});
+
 		std::vector<Tuple> acc;
 		const int size = std::tuple_size<Tuple>::value;
 		assert(sqlite3_column_count(stmt) == size);
@@ -133,7 +136,6 @@ class Database
 		}
 
 
-		sqlite3_finalize(stmt);
 		return acc;
 		//assert that column matches row number, or just rly on throwing..
 	}
@@ -199,8 +201,8 @@ class Database
 		{
 			sqlite3_stmt *stmt;
 			sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "BEGIN DEFERRED TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+			Cleaner c([&](){sqlite3_finalize(stmt);});
 			sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;}, db.db);
-			sqlite3_finalize(stmt);
 		};
 
 		Transaction (Transaction&&) = default;
@@ -218,16 +220,16 @@ class Database
 			{
 				sqlite3_stmt *stmt;
 				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "ROLLBACK TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+				Cleaner c([&](){sqlite3_finalize(stmt);});
 				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE || a == SQLITE_ROW;}, db.db);
-				sqlite3_finalize(stmt);
 			}
 			else 
 			{
 				sqlite3_stmt *stmt;
 
 				sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db.db, "COMMIT TRANSACTION",-1, &stmt, nullptr);}, SQLITE_OK, db.db);
+				Cleaner c([&](){sqlite3_finalize(stmt);});
 				sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, [](const auto a){return a == SQLITE_OK || a == SQLITE_DONE;}, db.db);
-				sqlite3_finalize(stmt);
 				committed = true;
 			}
 		}
@@ -259,8 +261,8 @@ class Database
 
 		std::string Qs = "CREATE " + q;
 		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, Qs.c_str(), Qs.length(), &stmt, nullptr);}, SQLITE_OK, db);
+		Cleaner c([&](){sqlite3_finalize(stmt);});
 		sqlExpect([&](void) -> int { return sqlite3_step(stmt);}, SQLITE_DONE, db);
-		sqlite3_finalize(stmt); 
 	}
 
 	private:
