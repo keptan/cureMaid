@@ -111,13 +111,14 @@ class Database
 
 
 	template<typename... types>
-	std::vector<std::tuple<types...>> SELECT (const std::string& query) const
+	std::vector<std::tuple<types...>> SELECT (const std::string& query, const std::string& tag = "") const
 	{
 		using Tuple = std::tuple<types...>;
 		const std::string sQuery = "SELECT " + query; 
 		
 		sqlite3_stmt* stmt = nullptr;
 		sqlExpect([&](void) -> int { return sqlite3_prepare_v2(db, sQuery.c_str(), sQuery.length(), &stmt, nullptr);}, SQLITE_OK, db);
+		if(tag.length()) sqlExpect([&](void) -> int { return sqlite3_bind_text(stmt, 1, tag.c_str(), tag.length(), SQLITE_STATIC);}, SQLITE_OK, db);
 
 		//runs on scope close, and finalizes stmt
 		Cleaner c([&](){sqlite3_finalize(stmt);});
